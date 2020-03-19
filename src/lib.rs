@@ -6,12 +6,51 @@
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
 use notify_rust::{self, Notification, NotificationUrgency, Timeout};
 use std::env;
-use std::error::Error;
+use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, SeekFrom};
 use std::sync::mpsc;
 use std::time::Duration;
+
+/// An error thrown during execution of the program
+#[derive(Debug)]
+pub enum AtlasError {
+    /// Something went wrong during notification on file changes
+    NotifyError(notify::Error),
+    /// Something went wrong when reading the log file
+    IoError(std::io::Error),
+    /// Something went wrong when reading from the channel
+    RecvError(std::sync::mpsc::RecvError),
+}
+
+impl From<notify::Error> for AtlasError {
+    fn from(e: notify::Error) -> Self {
+        AtlasError::NotifyError(e)
+    }
+}
+
+impl From<std::io::Error> for AtlasError {
+    fn from(e: std::io::Error) -> Self {
+        AtlasError::IoError(e)
+    }
+}
+
+impl From<std::sync::mpsc::RecvError> for AtlasError {
+    fn from(e: std::sync::mpsc::RecvError) -> Self {
+        AtlasError::RecvError(e)
+    }
+}
+
+impl fmt::Display for AtlasError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AtlasError::NotifyError(e) => write!(f, "AtlasError::NotifyError: {}", e),
+            AtlasError::IoError(e) => write!(f, "AtlasError::IoError: {}", e),
+            AtlasError::RecvError(e) => write!(f, "AtlasError::RecvError: {}", e),
+        }
+    }
+}
 
 /// Stores the configuration for the application.
 pub struct Config {
@@ -59,7 +98,7 @@ fn notify() -> Result<(), notify_rust::error::Error> {
 /// Runs the application given a certain configuration.
 ///
 /// Inspired by https://pastebin.com/emFNyUXe
-pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+pub fn run(config: Config) -> Result<(), AtlasError> {
     let (tx, rx) = mpsc::channel();
     let mut watcher = notify::watcher(tx, Duration::from_secs(5))?;
     watcher.watch(&config.watch_file, RecursiveMode::NonRecursive)?;
@@ -71,7 +110,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     loop {
         match rx.recv() {
             Ok(event) => handle_event(event, &config, &f),
-            Err(err) => return Err(Box::new(err)),
+            Err(err) => return Err(AtlasError::RecvError(err)),
         }
     }
 }
