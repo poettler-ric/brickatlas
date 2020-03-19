@@ -17,16 +17,18 @@ use std::time::Duration;
 #[derive(Debug)]
 pub enum AtlasError {
     /// Something went wrong during notification on file changes
-    NotifyError(notify::Error),
+    FsNotifyError(notify::Error),
     /// Something went wrong when reading the log file
     IoError(std::io::Error),
     /// Something went wrong when reading from the channel
     RecvError(std::sync::mpsc::RecvError),
+    /// Something went wrong when notifying the user
+    NotifyError(notify_rust::error::Error),
 }
 
 impl From<notify::Error> for AtlasError {
     fn from(e: notify::Error) -> Self {
-        AtlasError::NotifyError(e)
+        AtlasError::FsNotifyError(e)
     }
 }
 
@@ -42,12 +44,19 @@ impl From<std::sync::mpsc::RecvError> for AtlasError {
     }
 }
 
+impl From<notify_rust::error::Error> for AtlasError {
+    fn from(e: notify_rust::error::Error) -> Self {
+        AtlasError::NotifyError(e)
+    }
+}
+
 impl fmt::Display for AtlasError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AtlasError::NotifyError(e) => write!(f, "AtlasError::NotifyError: {}", e),
+            AtlasError::FsNotifyError(e) => write!(f, "AtlasError::FsNotifyError: {}", e),
             AtlasError::IoError(e) => write!(f, "AtlasError::IoError: {}", e),
             AtlasError::RecvError(e) => write!(f, "AtlasError::RecvError: {}", e),
+            AtlasError::NotifyError(e) => write!(f, "AtlasError::NotifyError: {}", e),
         }
     }
 }
@@ -55,7 +64,7 @@ impl fmt::Display for AtlasError {
 /// Stores the configuration for the application.
 pub struct Config {
     watch_file: String,
-    bad_maps: Vec<String>,
+    bad_map_messages: Vec<String>,
 }
 
 impl Config {
@@ -71,19 +80,34 @@ impl Config {
             None => return Err("no file to watch given"),
         };
 
-        let bad_maps = args.collect::<Vec<_>>();
-        if bad_maps.is_empty() {
+        let template = String::from("You have entered {}");
+        let bad_map_messages = args.map(|m| template.replace("{}", &m)).collect::<Vec<_>>();
+        if bad_map_messages.is_empty() {
             return Err("no bad maps given");
         }
 
         Ok(Config {
             watch_file,
-            bad_maps,
+            bad_map_messages,
         })
     }
 }
 
-fn handle_event<R>(event: DebouncedEvent, config: &Config, file: &BufReader<R>) {}
+fn handle_event(
+    event: DebouncedEvent,
+    config: &Config,
+    file: &mut BufReader<std::fs::File>,
+) -> Result<(), AtlasError> {
+    if let DebouncedEvent::Write(p) = event {
+        for line in file.lines() {
+            let line = line?;
+            if config.bad_map_messages.iter().any(|bmm| bmm == &line) {
+                notify()?;
+            }
+        }
+    }
+    Ok(())
+}
 
 fn notify() -> Result<(), notify_rust::error::Error> {
     Notification::new()
@@ -109,7 +133,7 @@ pub fn run(config: Config) -> Result<(), AtlasError> {
 
     loop {
         match rx.recv() {
-            Ok(event) => handle_event(event, &config, &f),
+            Ok(event) => handle_event(event, &config, &mut f)?,
             Err(err) => return Err(AtlasError::RecvError(err)),
         }
     }
