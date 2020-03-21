@@ -20,8 +20,6 @@ pub enum AtlasError {
     FsNotifyError(notify::Error),
     /// Something went wrong when reading the log file
     IoError(std::io::Error),
-    /// Something went wrong when reading from the channel
-    RecvError(std::sync::mpsc::RecvError),
     /// Something went wrong when notifying the user
     NotifyError(notify_rust::error::Error),
 }
@@ -38,12 +36,6 @@ impl From<std::io::Error> for AtlasError {
     }
 }
 
-impl From<std::sync::mpsc::RecvError> for AtlasError {
-    fn from(e: std::sync::mpsc::RecvError) -> Self {
-        AtlasError::RecvError(e)
-    }
-}
-
 impl From<notify_rust::error::Error> for AtlasError {
     fn from(e: notify_rust::error::Error) -> Self {
         AtlasError::NotifyError(e)
@@ -55,7 +47,6 @@ impl fmt::Display for AtlasError {
         match self {
             AtlasError::FsNotifyError(e) => write!(f, "AtlasError::FsNotifyError: {}", e),
             AtlasError::IoError(e) => write!(f, "AtlasError::IoError: {}", e),
-            AtlasError::RecvError(e) => write!(f, "AtlasError::RecvError: {}", e),
             AtlasError::NotifyError(e) => write!(f, "AtlasError::NotifyError: {}", e),
         }
     }
@@ -132,10 +123,8 @@ pub fn run(config: Config) -> Result<(), AtlasError> {
     let mut f = BufReader::new(f);
     f.seek(SeekFrom::End(0))?;
 
-    loop {
-        match rx.recv() {
-            Ok(event) => handle_event(event, &config, &mut f)?,
-            Err(err) => return Err(AtlasError::RecvError(err)),
-        }
+    for event in rx {
+        handle_event(event, &config, &mut f)?;
     }
+    Ok(())
 }
