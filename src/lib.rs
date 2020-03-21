@@ -7,6 +7,7 @@
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
 use notify_rust::{self, Notification, NotificationUrgency, Timeout};
 use std::env;
+use std::error;
 use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
@@ -49,6 +50,16 @@ impl fmt::Display for AtlasError {
             AtlasError::FsNotifyError(e) => write!(f, "AtlasError::FsNotifyError: {}", e),
             AtlasError::IoError(e) => write!(f, "AtlasError::IoError: {}", e),
             AtlasError::NotifyError(e) => write!(f, "AtlasError::NotifyError: {}", e),
+        }
+    }
+}
+
+impl error::Error for AtlasError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            AtlasError::FsNotifyError(e) => Some(e),
+            AtlasError::IoError(e) => Some(e),
+            AtlasError::NotifyError(e) => Some(e),
         }
     }
 }
