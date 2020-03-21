@@ -62,6 +62,7 @@ impl fmt::Display for AtlasError {
 }
 
 /// Stores the configuration for the application.
+#[derive(Debug)]
 pub struct Config {
     watch_file: String,
     bad_map_messages: Vec<String>,
