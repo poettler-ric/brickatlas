@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![warn(missing_doc_code_examples)]
 
 //! `brickatlas` watches the PoE log file. If the user enters a configured map a
 //! alert notification is shown to not complete the map.
@@ -90,7 +91,7 @@ fn handle_event(
     config: &Config,
     file: &mut BufReader<std::fs::File>,
 ) -> Result<(), AtlasError> {
-    if let DebouncedEvent::Write(p) = event {
+    if let DebouncedEvent::Write(_) = event {
         for line in file.lines() {
             let line = line?;
             if config.bad_map_messages.iter().any(|bmm| bmm == &line) {
@@ -101,7 +102,7 @@ fn handle_event(
     Ok(())
 }
 
-fn notify() -> Result<(), notify_rust::error::Error> {
+fn notify() -> Result<(), AtlasError> {
     Notification::new()
         .summary("brickatlas alert")
         .body("Do NOT complete map!")
@@ -112,8 +113,6 @@ fn notify() -> Result<(), notify_rust::error::Error> {
 }
 
 /// Runs the application given a certain configuration.
-///
-/// Inspired by https://pastebin.com/emFNyUXe
 pub fn run(config: Config) -> Result<(), AtlasError> {
     let (tx, rx) = mpsc::channel();
     let mut watcher = notify::watcher(tx, Duration::from_secs(5))?;
