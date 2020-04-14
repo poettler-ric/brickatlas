@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![deny(deprecated)]
 #![warn(missing_doc_code_examples)]
 
 //! `brickatlas` watches the PoE log file. If the user enters a configured map a
