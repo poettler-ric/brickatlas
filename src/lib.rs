@@ -126,7 +126,7 @@ fn notify() -> Result<(), AtlasError> {
 /// Runs the application given a certain configuration.
 pub fn run(config: Config) -> Result<(), AtlasError> {
     let (tx, rx) = mpsc::channel();
-    let mut watcher = notify::watcher(tx, Duration::from_secs(5))?;
+    let mut watcher = notify::watcher(tx, Duration::from_secs(1))?;
     watcher.watch(&config.watch_file, RecursiveMode::NonRecursive)?;
 
     let f = File::open(&config.watch_file)?;
