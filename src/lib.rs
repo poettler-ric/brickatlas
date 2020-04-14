@@ -117,9 +117,11 @@ impl Config {
             bad_map_messages,
             ..
         } = self;
-        let template = String::from("You have entered {}");
-        bad_map_messages
-            .get_or_insert_with(|| maps.iter().map(|m| template.replace("{}", &m)).collect())
+        bad_map_messages.get_or_insert_with(|| {
+            maps.iter()
+                .map(|m| format!("You have entered {}", m))
+                .collect()
+        })
     }
 
     /// Creates an initial configuration.
