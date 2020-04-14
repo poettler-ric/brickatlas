@@ -4,9 +4,9 @@
 //! `brickatlas` watches the PoE log file. If the user enters a configured map a
 //! alert notification is shown to not complete the map.
 
+use clap::{App, Arg};
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
 use notify_rust::{self, Notification, NotificationUrgency, Timeout};
-use std::env;
 use std::error;
 use std::fmt;
 use std::fs::File;
@@ -82,15 +82,31 @@ impl Config {
     /// The first argument is interpreted as the file to watch. The second one
     /// the maps to look for.
     pub fn update_from_args(&mut self) -> Result<(), &'static str> {
-        let mut args = env::args().skip(1);
+        let matches = App::new("brickatlas")
+            .arg(
+                Arg::with_name("logfile")
+                    .short("l")
+                    .help("log file to analyze")
+                    .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("maps")
+                    .short("m")
+                    .help("maps to avoid")
+                    .takes_value(true)
+                    .multiple(true),
+            )
+            .get_matches();
 
-        if let Some(watch_file) = args.next() {
-            self.watch_file = watch_file;
-        };
+        if let Some(logfile) = matches.value_of("logfile") {
+            self.watch_file = String::from(logfile);
+        }
 
-        let template = String::from("You have entered {}");
-        self.bad_map_messages
-            .extend(args.map(|m| template.replace("{}", &m)));
+        if let Some(maps) = matches.values_of("maps") {
+            let template = String::from("You have entered {}");
+            self.bad_map_messages
+                .extend(maps.map(|m| template.replace("{}", &m)));
+        }
 
         Ok(())
     }
