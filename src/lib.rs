@@ -73,7 +73,8 @@ impl error::Error for AtlasError {
 #[derive(Debug, Default)]
 pub struct Config {
     watch_file: String,
-    bad_map_messages: Vec<String>,
+    maps: Vec<String>,
+    bad_map_messages: Option<Vec<String>>,
 }
 
 impl Config {
@@ -103,12 +104,21 @@ impl Config {
         }
 
         if let Some(maps) = matches.values_of("maps") {
-            let template = String::from("You have entered {}");
-            self.bad_map_messages
-                .extend(maps.map(|m| template.replace("{}", &m)));
+            self.maps.extend(maps.map(String::from));
         }
 
         Ok(())
+    }
+
+    fn bad_map_messages(&mut self) -> &[String] {
+        let Self {
+            maps,
+            bad_map_messages,
+            ..
+        } = self;
+        let template = String::from("You have entered {}");
+        bad_map_messages
+            .get_or_insert_with(|| maps.iter().map(|m| template.replace("{}", &m)).collect())
     }
 
     /// Creates an initial configuration.
@@ -124,13 +134,13 @@ impl Config {
 
 fn handle_event(
     event: DebouncedEvent,
-    config: &Config,
+    config: &mut Config,
     file: &mut BufReader<std::fs::File>,
 ) -> Result<(), AtlasError> {
     if let DebouncedEvent::Write(_) = event {
         for line in file.lines() {
             let line = line?;
-            if config.bad_map_messages.iter().any(|bmm| bmm == &line) {
+            if config.bad_map_messages().iter().any(|bmm| bmm == &line) {
                 notify()?;
             }
         }
@@ -149,7 +159,7 @@ fn notify() -> Result<(), AtlasError> {
 }
 
 /// Runs the application given a certain configuration.
-pub fn run(config: Config) -> Result<(), AtlasError> {
+pub fn run(config: &mut Config) -> Result<(), AtlasError> {
     if !Path::new(&config.watch_file).exists() {
         return Err(AtlasError::ConfigError(format!(
             "watchfile ({}) doesn't exist",
@@ -166,7 +176,7 @@ pub fn run(config: Config) -> Result<(), AtlasError> {
     f.seek(SeekFrom::End(0))?;
 
     for event in rx {
-        handle_event(event, &config, &mut f)?;
+        handle_event(event, config, &mut f)?;
     }
     Ok(())
 }
