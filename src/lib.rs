@@ -12,6 +12,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, SeekFrom};
+use std::path::Path;
 use std::sync::mpsc;
 use std::time::Duration;
 
@@ -24,6 +25,8 @@ pub enum AtlasError {
     IoError(std::io::Error),
     /// Something went wrong when notifying the user
     NotifyError(notify_rust::error::Error),
+    /// Configuration is not usable
+    ConfigError(String),
 }
 
 impl From<notify::Error> for AtlasError {
@@ -50,6 +53,7 @@ impl fmt::Display for AtlasError {
             AtlasError::FsNotifyError(e) => write!(f, "AtlasError::FsNotifyError: {}", e),
             AtlasError::IoError(e) => write!(f, "AtlasError::IoError: {}", e),
             AtlasError::NotifyError(e) => write!(f, "AtlasError::NotifyError: {}", e),
+            AtlasError::ConfigError(e) => write!(f, "AtlasError::ConfigError: {}", e),
         }
     }
 }
@@ -60,40 +64,45 @@ impl error::Error for AtlasError {
             AtlasError::FsNotifyError(e) => Some(e),
             AtlasError::IoError(e) => Some(e),
             AtlasError::NotifyError(e) => Some(e),
+            AtlasError::ConfigError(_) => None,
         }
     }
 }
 
 /// Stores the configuration for the application.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Config {
     watch_file: String,
     bad_map_messages: Vec<String>,
 }
 
 impl Config {
-    /// Creates a new configuration from command line arguments.
+    /// Updates the configuration from command line arguments.
     ///
     /// The first argument is interpreted as the file to watch. The second one
     /// the maps to look for.
-    pub fn new_from_args() -> Result<Config, &'static str> {
+    pub fn update_from_args(&mut self) -> Result<(), &'static str> {
         let mut args = env::args().skip(1);
 
-        let watch_file = match args.next() {
-            Some(v) => v,
-            None => return Err("no file to watch given"),
+        if let Some(watch_file) = args.next() {
+            self.watch_file = watch_file;
         };
 
         let template = String::from("You have entered {}");
-        let bad_map_messages = args.map(|m| template.replace("{}", &m)).collect::<Vec<_>>();
-        if bad_map_messages.is_empty() {
-            return Err("no bad maps given");
-        }
+        self.bad_map_messages
+            .extend(args.map(|m| template.replace("{}", &m)));
 
-        Ok(Config {
-            watch_file,
-            bad_map_messages,
-        })
+        Ok(())
+    }
+
+    /// Creates an initial configuration.
+    ///
+    /// Configuration is taken from the following sources:
+    /// 1. Command line arguments
+    pub fn init() -> Result<Config, &'static str> {
+        let mut cfg: Config = Default::default();
+        cfg.update_from_args()?;
+        Ok(cfg)
     }
 }
 
@@ -125,6 +134,13 @@ fn notify() -> Result<(), AtlasError> {
 
 /// Runs the application given a certain configuration.
 pub fn run(config: Config) -> Result<(), AtlasError> {
+    if !Path::new(&config.watch_file).exists() {
+        return Err(AtlasError::ConfigError(format!(
+            "watchfile ({}) doesn't exist",
+            &config.watch_file
+        )));
+    }
+
     let (tx, rx) = mpsc::channel();
     let mut watcher = notify::watcher(tx, Duration::from_secs(1))?;
     watcher.watch(&config.watch_file, RecursiveMode::NonRecursive)?;
