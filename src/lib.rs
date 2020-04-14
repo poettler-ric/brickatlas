@@ -73,7 +73,7 @@ impl error::Error for AtlasError {
 /// Stores the configuration for the application.
 #[derive(Debug, Default)]
 pub struct Config {
-    watch_file: String,
+    logfile: String,
     maps: Vec<String>,
     bad_map_messages: Option<Vec<String>>,
 }
@@ -101,7 +101,7 @@ impl Config {
             .get_matches();
 
         if let Some(logfile) = matches.value_of("logfile") {
-            self.watch_file = String::from(logfile);
+            self.logfile = String::from(logfile);
         }
 
         if let Some(maps) = matches.values_of("maps") {
@@ -161,18 +161,18 @@ fn notify() -> Result<(), AtlasError> {
 
 /// Runs the application given a certain configuration.
 pub fn run(config: &mut Config) -> Result<(), AtlasError> {
-    if !Path::new(&config.watch_file).exists() {
+    if !Path::new(&config.logfile).exists() {
         return Err(AtlasError::ConfigError(format!(
             "watchfile ({}) doesn't exist",
-            &config.watch_file
+            &config.logfile
         )));
     }
 
     let (tx, rx) = mpsc::channel();
     let mut watcher = notify::watcher(tx, Duration::from_secs(1))?;
-    watcher.watch(&config.watch_file, RecursiveMode::NonRecursive)?;
+    watcher.watch(&config.logfile, RecursiveMode::NonRecursive)?;
 
-    let f = File::open(&config.watch_file)?;
+    let f = File::open(&config.logfile)?;
     let mut f = BufReader::new(f);
     f.seek(SeekFrom::End(0))?;
 
