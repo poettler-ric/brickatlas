@@ -12,3 +12,5 @@ license = "MIT OR Apache-2.0"
 notify-rust = "3.6.3"
 notify = "4.0.15"
 clap = "2.33.0"
+serde = { version = "1.0.106", features = ["derive"] }
+toml = "0.5.6"

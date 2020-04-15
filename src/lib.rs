@@ -10,14 +10,16 @@
 use clap::{App, Arg};
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
 use notify_rust::{self, Notification, NotificationUrgency, Timeout};
+use serde::Deserialize;
 use std::error;
 use std::fmt;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{BufReader, SeekFrom};
 use std::path::Path;
 use std::sync::mpsc;
 use std::time::Duration;
+// use toml;
 
 /// An error thrown during execution of the program
 #[derive(Debug)]
@@ -30,6 +32,8 @@ pub enum AtlasError {
     NotifyError(notify_rust::error::Error),
     /// Configuration is not usable
     ConfigError(String),
+    /// Something went wrong while parsing the configuration
+    TomlError(toml::de::Error),
 }
 
 impl From<notify::Error> for AtlasError {
@@ -50,6 +54,12 @@ impl From<notify_rust::error::Error> for AtlasError {
     }
 }
 
+impl From<toml::de::Error> for AtlasError {
+    fn from(e: toml::de::Error) -> Self {
+        AtlasError::TomlError(e)
+    }
+}
+
 impl fmt::Display for AtlasError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -57,6 +67,7 @@ impl fmt::Display for AtlasError {
             AtlasError::IoError(e) => write!(f, "AtlasError::IoError: {}", e),
             AtlasError::NotifyError(e) => write!(f, "AtlasError::NotifyError: {}", e),
             AtlasError::ConfigError(e) => write!(f, "AtlasError::ConfigError: {}", e),
+            AtlasError::TomlError(e) => write!(f, "AtlasError::TomlError: {}", e),
         }
     }
 }
@@ -68,14 +79,17 @@ impl error::Error for AtlasError {
             AtlasError::IoError(e) => Some(e),
             AtlasError::NotifyError(e) => Some(e),
             AtlasError::ConfigError(_) => None,
+            AtlasError::TomlError(e) => Some(e),
         }
     }
 }
 
 /// Stores the configuration for the application.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize)]
 pub struct Config {
+    #[serde(default)]
     logfile: String,
+    #[serde(default)]
     maps: Vec<String>,
     bad_map_messages: Option<Vec<String>>,
 }
@@ -85,8 +99,14 @@ impl Config {
     ///
     /// The first argument is interpreted as the file to watch. The second one
     /// the maps to look for.
-    pub fn new_from_args() -> Result<Config, &'static str> {
+    pub fn new_from_args() -> Result<Config, AtlasError> {
         let matches = App::new("brickatlas")
+            .arg(
+                Arg::with_name("configfile")
+                    .short("c")
+                    .help("config file to use")
+                    .takes_value(true),
+            )
             .arg(
                 Arg::with_name("logfile")
                     .short("l")
@@ -102,18 +122,28 @@ impl Config {
             )
             .get_matches();
 
-        let logfile = String::from(matches.value_of("logfile").unwrap_or(""));
-
-        let maps = match matches.values_of("maps") {
-            Some(v) => v.map(String::from).collect(),
-            None => vec![],
+        let mut config = if let Some(file) = matches.value_of("configfile") {
+            Self::new_from_file(file)?
+        } else {
+            Default::default()
         };
 
-        Ok(Config {
-            logfile: logfile,
-            maps: maps,
-            bad_map_messages: None,
-        })
+        if let Some(logfile) = matches.value_of("logfile") {
+            config.logfile = String::from(logfile);
+        }
+
+        if let Some(maps) = matches.values_of("maps") {
+            config.maps.extend(maps.map(String::from));
+        }
+
+        Ok(config)
+    }
+
+    /// Parse configuration from a toml file.
+    pub fn new_from_file(file: &str) -> Result<Config, AtlasError> {
+        Ok(toml::from_str::<Config>(
+            fs::read_to_string(file)?.as_str(),
+        )?)
     }
 
     fn bad_map_messages(&mut self) -> &[String] {
