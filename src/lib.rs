@@ -8,8 +8,10 @@
 //! Inspired by this [Python script](https://pastebin.com/emFNyUXe).
 
 use clap::{App, Arg};
+use lazy_static::lazy_static;
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
 use notify_rust::{self, Notification, NotificationUrgency, Timeout};
+use regex::Regex;
 use serde::Deserialize;
 use std::error;
 use std::fmt;
@@ -90,7 +92,6 @@ pub struct Config {
     logfile: String,
     #[serde(default)]
     maps: Vec<String>,
-    bad_map_messages: Option<Vec<String>>,
 }
 
 impl Config {
@@ -144,19 +145,6 @@ impl Config {
             fs::read_to_string(file)?.as_str(),
         )?)
     }
-
-    fn bad_map_messages(&mut self) -> &[String] {
-        let Self {
-            maps,
-            bad_map_messages,
-            ..
-        } = self;
-        bad_map_messages.get_or_insert_with(|| {
-            maps.iter()
-                .map(|m| format!("You have entered {}", m))
-                .collect()
-        })
-    }
 }
 
 fn handle_event(
@@ -167,8 +155,19 @@ fn handle_event(
     if let DebouncedEvent::Write(_) = event {
         for line in file.lines() {
             let line = line?;
-            if config.bad_map_messages().iter().any(|bmm| bmm == &line) {
-                notify()?;
+
+            lazy_static! {
+                static ref MAP_RE: Regex = Regex::new("You have entered (?P<map>.+).").unwrap();
+            }
+            if let Some(cap) = MAP_RE.captures(line.as_str()) {
+                if config
+                    .maps
+                    .iter()
+                    .find(|m| m.as_str() == &cap["map"])
+                    .is_some()
+                {
+                    notify()?;
+                }
             }
         }
     }
