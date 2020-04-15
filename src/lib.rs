@@ -83,7 +83,7 @@ impl Config {
     ///
     /// The first argument is interpreted as the file to watch. The second one
     /// the maps to look for.
-    pub fn update_from_args(&mut self) -> Result<(), &'static str> {
+    pub fn new_from_args() -> Result<Config, &'static str> {
         let matches = App::new("brickatlas")
             .arg(
                 Arg::with_name("logfile")
@@ -100,15 +100,18 @@ impl Config {
             )
             .get_matches();
 
-        if let Some(logfile) = matches.value_of("logfile") {
-            self.logfile = String::from(logfile);
-        }
+        let logfile = String::from(matches.value_of("logfile").unwrap_or(""));
 
-        if let Some(maps) = matches.values_of("maps") {
-            self.maps.extend(maps.map(String::from));
-        }
+        let maps = match matches.values_of("maps") {
+            Some(v) => v.map(String::from).collect(),
+            None => vec![],
+        };
 
-        Ok(())
+        Ok(Config {
+            logfile: logfile,
+            maps: maps,
+            bad_map_messages: None,
+        })
     }
 
     fn bad_map_messages(&mut self) -> &[String] {
@@ -122,16 +125,6 @@ impl Config {
                 .map(|m| format!("You have entered {}", m))
                 .collect()
         })
-    }
-
-    /// Creates an initial configuration.
-    ///
-    /// Configuration is taken from the following sources:
-    /// 1. Command line arguments
-    pub fn init() -> Result<Config, &'static str> {
-        let mut cfg: Config = Default::default();
-        cfg.update_from_args()?;
-        Ok(cfg)
     }
 }
 
