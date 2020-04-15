@@ -4,6 +4,8 @@
 
 //! `brickatlas` watches the PoE log file. If the user enters a configured map a
 //! alert notification is shown to not complete the map.
+//!
+//! Inspired by this [Python script](https://pastebin.com/emFNyUXe).
 
 use clap::{App, Arg};
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
