@@ -19,7 +19,6 @@ use std::io::{BufReader, SeekFrom};
 use std::path::Path;
 use std::sync::mpsc;
 use std::time::Duration;
-// use toml;
 
 /// An error thrown during execution of the program
 #[derive(Debug)]
