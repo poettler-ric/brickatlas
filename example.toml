@@ -1,0 +1,2 @@
+logfile = "watch.txt"
+maps = ["Core", "Desert"]
