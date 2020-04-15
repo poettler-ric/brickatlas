@@ -95,7 +95,7 @@ pub struct Config {
 }
 
 impl Config {
-    /// Updates the configuration from command line arguments.
+    /// Parses the configuration from command line arguments.
     ///
     /// The first argument is interpreted as the file to watch. The second one
     /// the maps to look for.
