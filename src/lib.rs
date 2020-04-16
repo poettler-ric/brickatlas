@@ -187,7 +187,7 @@ fn handle_event(
 fn notify_map() -> Result<(), AtlasError> {
     Notification::new()
         .summary("brickatlas map")
-        .body("Do NOT complete map!")
+        .body("Do <u><b>NOT</b></u> complete map!")
         .timeout(Timeout::Milliseconds(5000))
         .urgency(NotificationUrgency::Critical)
         .show()?;
