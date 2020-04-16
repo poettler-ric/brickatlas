@@ -205,11 +205,11 @@ fn notify_buyer(
         .summary("brickatlas buyer")
         .body(
             format!(
-                r"buyer: <b>{}</b></br>
-object: <b>{}</b></br>
-price: <b>{}</b></br>
-league: <b>{}</b></br>
-location: <b>{}</b></br>",
+                r"buyer: <b>{}</b>
+object: <b>{}</b>
+price: <b>{}</b>
+league: <b>{}</b>
+location: <b>{}</b>",
                 buyer, object, price, league, location
             )
             .as_str(),
