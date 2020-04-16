@@ -158,6 +158,7 @@ fn handle_event(
 
             lazy_static! {
                 static ref MAP_RE: Regex = Regex::new("You have entered (?P<map>.+).").unwrap();
+                static ref BUY_RE: Regex = Regex::new(r"@From (?P<buyer>.+): Hi, I would like to buy your (?P<object>.+) listed for (?P<price>.+) in (?P<league>.+) \((?P<location>.+)\)").unwrap();
             }
             if let Some(cap) = MAP_RE.captures(line.as_str()) {
                 if config
@@ -166,20 +167,54 @@ fn handle_event(
                     .find(|m| m.as_str() == &cap["map"])
                     .is_some()
                 {
-                    notify()?;
+                    notify_map()?;
                 }
+            }
+            if let Some(cap) = BUY_RE.captures(line.as_str()) {
+                notify_buyer(
+                    &cap["buyer"],
+                    &cap["object"],
+                    &cap["price"],
+                    &cap["league"],
+                    &cap["location"],
+                )?;
             }
         }
     }
     Ok(())
 }
 
-fn notify() -> Result<(), AtlasError> {
+fn notify_map() -> Result<(), AtlasError> {
     Notification::new()
-        .summary("brickatlas alert")
+        .summary("brickatlas map")
         .body("Do NOT complete map!")
         .timeout(Timeout::Milliseconds(5000))
         .urgency(NotificationUrgency::Critical)
+        .show()?;
+    Ok(())
+}
+
+fn notify_buyer(
+    buyer: &str,
+    object: &str,
+    price: &str,
+    league: &str,
+    location: &str,
+) -> Result<(), AtlasError> {
+    Notification::new()
+        .summary("brickatlas buyer")
+        .body(
+            format!(
+                r"buyer: <b>{}</b></br>
+object: <b>{}</b></br>
+price: <b>{}</b></br>
+league: <b>{}</b></br>
+location: <b>{}</b></br>",
+                buyer, object, price, league, location
+            )
+            .as_str(),
+        )
+        .timeout(Timeout::Milliseconds(5000))
         .show()?;
     Ok(())
 }
