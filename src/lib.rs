@@ -183,7 +183,9 @@ By default {} is read as configuration file.",
             maps_regex_compiled,
             ..
         } = self;
-        maps_regex_compiled.get_or_insert_with(|| Regex::new(maps_regex.as_str()).unwrap())
+        maps_regex_compiled.get_or_insert_with(|| {
+            Regex::new(maps_regex.as_str()).expect("Error when compiling maps_regex")
+        })
     }
 
     fn buy_regex(&mut self) -> &Regex {
@@ -192,7 +194,9 @@ By default {} is read as configuration file.",
             buy_regex_compiled,
             ..
         } = self;
-        buy_regex_compiled.get_or_insert_with(|| Regex::new(buy_regex.as_str()).unwrap())
+        buy_regex_compiled.get_or_insert_with(|| {
+            Regex::new(buy_regex.as_str()).expect("Error when compiling buy_regex")
+        })
     }
 
     /// Parse configuration from a toml file.
