@@ -8,7 +8,6 @@
 //! Inspired by this [Python script](https://pastebin.com/emFNyUXe).
 
 use clap::{App, Arg};
-use lazy_static::lazy_static;
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
 use notify_rust::{self, Notification, NotificationUrgency, Timeout};
 use regex::Regex;
@@ -92,6 +91,12 @@ pub struct Config {
     logfile: String,
     #[serde(default)]
     maps: Vec<String>,
+    maps_regex: String,
+    #[serde(skip)]
+    maps_regex_compiled: Option<Regex>,
+    buy_regex: String,
+    #[serde(skip)]
+    buy_regex_compiled: Option<Regex>,
 }
 
 impl Config {
@@ -139,6 +144,24 @@ impl Config {
         Ok(config)
     }
 
+    fn maps_regex(&mut self) -> &Regex {
+        let Self {
+            maps_regex,
+            maps_regex_compiled,
+            ..
+        } = self;
+        maps_regex_compiled.get_or_insert_with(|| Regex::new(maps_regex.as_str()).unwrap())
+    }
+
+    fn buy_regex(&mut self) -> &Regex {
+        let Self {
+            buy_regex,
+            buy_regex_compiled,
+            ..
+        } = self;
+        buy_regex_compiled.get_or_insert_with(|| Regex::new(buy_regex.as_str()).unwrap())
+    }
+
     /// Parse configuration from a toml file.
     pub fn new_from_file(file: &str) -> Result<Config, AtlasError> {
         Ok(toml::from_str::<Config>(
@@ -156,11 +179,7 @@ fn handle_event(
         for line in file.lines() {
             let line = line?;
 
-            lazy_static! {
-                static ref MAP_RE: Regex = Regex::new("You have entered (?P<map>.+).").unwrap();
-                static ref BUY_RE: Regex = Regex::new(r"@From (?P<buyer>.+): Hi, I would like to buy your (?P<object>.+) listed for (?P<price>.+) in (?P<league>.+) \((?P<location>.+)\)").unwrap();
-            }
-            if let Some(cap) = MAP_RE.captures(line.as_str()) {
+            if let Some(cap) = config.maps_regex().captures(line.as_str()) {
                 if config
                     .maps
                     .iter()
@@ -170,7 +189,7 @@ fn handle_event(
                     notify_map()?;
                 }
             }
-            if let Some(cap) = BUY_RE.captures(line.as_str()) {
+            if let Some(cap) = config.buy_regex().captures(line.as_str()) {
                 notify_buyer(
                     &cap["buyer"],
                     &cap["object"],

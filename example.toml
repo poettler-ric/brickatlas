@@ -1,2 +1,4 @@
 logfile = "watch.txt"
 maps = ["Core", "Desert"]
+maps_regex = "You have entered (?P<map>.+)."
+buy_regex = "@From (?P<buyer>.+): Hi, I would like to buy your (?P<object>.+) listed for (?P<price>.+) in (?P<league>.+) \\((?P<location>.+)\\)"
