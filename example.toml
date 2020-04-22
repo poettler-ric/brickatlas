@@ -1,4 +1,4 @@
 logfile = "/data/home/richi/wineprefix/poe/drive_c/Program Files (x86)/Grinding Gear Games/Path of Exile/logs/Client.txt"
-maps = ["Oriath"]
+maps = ["Oriath", "Core"]
 maps_regex = "You have entered (?P<map>.+)."
 buy_regex = "@From (?P<buyer>.+): Hi, I would like to buy your (?P<object>.+) listed for (?P<price>.+) in (?P<league>.+) \\((?P<location>.+)\\)"
