@@ -8,6 +8,7 @@
 //! Inspired by this [Python script](https://pastebin.com/emFNyUXe).
 
 use clap::{App, Arg};
+use dirs;
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
 use notify_rust::{self, Notification, NotificationUrgency, Timeout};
 use regex::Regex;
@@ -17,7 +18,7 @@ use std::fmt;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{BufReader, SeekFrom};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;
 
@@ -105,12 +106,38 @@ impl Config {
     /// The first argument is interpreted as the file to watch. The second one
     /// the maps to look for.
     pub fn new_from_args() -> Result<Config, AtlasError> {
+        let default_config = [
+            dirs::config_dir()
+                .unwrap_or_default()
+                .to_str()
+                .expect("Error while extracting default config dir"),
+            "brickatlas",
+            "config.toml",
+        ]
+        .iter()
+        .collect::<PathBuf>();
+
         let matches = App::new("brickatlas")
+            .about(
+                format!(
+                    r"Notifies when you are about to brick your atlas or get buy whispers.
+By default {} is read as configuration file.",
+                    default_config
+                        .to_str()
+                        .expect("Error while extracting default config path")
+                )
+                .as_str(),
+            )
             .arg(
                 Arg::with_name("configfile")
                     .short("c")
                     .help("config file to use")
                     .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("no_default_config")
+                    .short("n")
+                    .help("don't read default config file"),
             )
             .arg(
                 Arg::with_name("logfile")
@@ -129,6 +156,12 @@ impl Config {
 
         let mut config = if let Some(file) = matches.value_of("configfile") {
             Self::new_from_file(file)?
+        } else if !matches.is_present("no_default_config") && default_config.is_file() {
+            Self::new_from_file(
+                default_config
+                    .to_str()
+                    .expect("Error while extracting default config string for reading"),
+            )?
         } else {
             Default::default()
         };
