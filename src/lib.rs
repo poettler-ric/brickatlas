@@ -10,7 +10,7 @@
 use clap::{App, Arg};
 use dirs;
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
-use notify_rust::{self, Notification, NotificationUrgency, Timeout};
+use notify_rust::{self, Notification, Timeout, Urgency};
 use regex::Regex;
 use serde::Deserialize;
 use std::error;
@@ -245,7 +245,7 @@ fn notify_map() -> Result<(), AtlasError> {
         .summary("brickatlas map")
         .body("Do <u><b>NOT</b></u> complete map!")
         .timeout(Timeout::Milliseconds(5000))
-        .urgency(NotificationUrgency::Critical)
+        .urgency(Urgency::Critical)
         .show()?;
     Ok(())
 }
