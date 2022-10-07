@@ -16,4 +16,4 @@ serde = { version = "1.0.145", features = ["derive"] }
 toml = "0.5.9"
 regex = "1.6.0"
 lazy_static = "1.4.0"
-dirs = "2.0.2"
+dirs = "4.0.0"
