@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 notify-rust = "4.5.10"
-notify = "4.0.17"
+notify = "5.0.0"
 clap = "2.34.0"
 serde = { version = "1.0.145", features = ["derive"] }
 toml = "0.5.9"

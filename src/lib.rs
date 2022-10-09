@@ -9,7 +9,7 @@
 
 use clap::{App, Arg};
 use dirs;
-use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
+use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use notify_rust::{self, Notification, Timeout, Urgency};
 use regex::Regex;
 use serde::Deserialize;
@@ -20,7 +20,6 @@ use std::io::prelude::*;
 use std::io::{BufReader, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
-use std::time::Duration;
 
 /// An error thrown during execution of the program
 #[derive(Debug)]
@@ -208,11 +207,11 @@ By default {} is read as configuration file.",
 }
 
 fn handle_event(
-    event: DebouncedEvent,
+    event: Event,
     config: &mut Config,
     file: &mut BufReader<std::fs::File>,
 ) -> Result<(), AtlasError> {
-    if let DebouncedEvent::Write(_) = event {
+    if event.kind.is_modify() {
         for line in file.lines() {
             let line = line?;
 
@@ -285,15 +284,15 @@ pub fn run(config: &mut Config) -> Result<(), AtlasError> {
     }
 
     let (tx, rx) = mpsc::channel();
-    let mut watcher = notify::watcher(tx, Duration::from_secs(1))?;
-    watcher.watch(&config.logfile, RecursiveMode::NonRecursive)?;
+    let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
+    watcher.watch(&config.logfile.as_ref(), RecursiveMode::NonRecursive)?;
 
     let f = File::open(&config.logfile)?;
     let mut f = BufReader::new(f);
     f.seek(SeekFrom::End(0))?;
 
-    for event in rx {
-        handle_event(event, config, &mut f)?;
+    for res in rx {
+        handle_event(res?, config, &mut f)?;
     }
     Ok(())
 }
