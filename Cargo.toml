@@ -9,11 +9,11 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-notify-rust = "4.5.10"
-notify = "5.0.0"
+notify-rust = "4.8.0"
+notify = "5.1.0"
 clap = "2.34.0"
-serde = { version = "1.0.145", features = ["derive"] }
-toml = "0.5.9"
-regex = "1.6.0"
+serde = { version = "1.0.160", features = ["derive"] }
+toml = "0.5.11"
+regex = "1.8.1"
 lazy_static = "1.4.0"
 dirs = "4.0.0"
